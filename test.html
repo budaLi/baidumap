@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<style type="text/css">
+	body, html{width: 100%;height: 100%;margin:0;font-family:"微软雅黑";}
+	#allmap {width: 100%; height:500px; overflow: hidden;}
+	#result {width:100%;font-size:12px;}
+	dl,dt,dd,ul,li{
+		margin:0;
+		padding:0;
+		list-style:none;
+	}
+	p{font-size:12px;}
+	dt{
+		font-size:14px;
+		font-family:"微软雅黑";
+		font-weight:bold;
+		border-bottom:1px dotted #000;
+		padding:5px 0 5px 5px;
+		margin:5px 0;
+	}
+	dd{
+		padding:5px 0 0 5px;
+	}
+	li{
+		line-height:28px;
+	}
+	</style>
+	
+	<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=gBKOASYh26dHD0uBYOcpA5ll7o8gqO8m"></script>
+	<!--加载鼠标绘制工具-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/DrawingManager/1.4/src/DrawingManager_min.js"></script>
+	<link rel="stylesheet" href="http://api.map.baidu.com/library/DrawingManager/1.4/src/DrawingManager_min.css" />
+	<!--加载检索信息窗口-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/SearchInfoWindow/1.4/src/SearchInfoWindow_min.js"></script>
+	<link rel="stylesheet" href="http://api.map.baidu.com/library/SearchInfoWindow/1.4/src/SearchInfoWindow_min.css" />
+	<!--加载鼠标绘制工具-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/DistanceTool/1.2/src/DistanceTool_min.js"></script
+	<!--加载热力图-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/Heatmap/2.0/src/Heatmap_min.js"></script>
+</head>
+<body>
+	<div id="allmap" style="overflow:hidden;zoom:1;position:relative;">	
+		<div id="map" style="height:100%;-webkit-transition: all 0.5s ease-in-out;transition: all 0.5s ease-in-out;"></div>
+	</div>
+	<div id="result">
+		<input type="button" onclick="add_control();" value="添加比例尺" />
+		<input type="button" onclick="zoomIn();" value="放大" />
+		<input type="button" onclick="zoomOut();" value="缩小" />
+		<input type="button" onclick="getDistince();" value="鼠标测距" />
+		<input type="button" value="图形绘制" onclick="drawarea()"/>
+		<input type="button" value="清除所有覆盖物" onclick="clearAll()"/>
+		<input type="button" value="开启网格" onclick="openwangge();"/>
+		<input type="button" value="关闭网格" onclick="closewangge();"/>
+		<input type="button" value="开启热力图" onclick="openhotmap();"/>
+		<input type="button" value="关闭热力图" onclick="closehotmap();"/>
+			
+		城市名: <input id="cityName" type="text" style="width:100px; margin-right:10px;" />
+		<input type="button" value="定位" onclick="theLocation()" />
+		<input type="button" value="显示轮廓" onclick="getBoundary()" />
+
+	</div>
+	
+	<script type="text/javascript">
+	var map = new BMap.Map('map');
+	var poi = new BMap.Point(116.307852,40.057031);
+	map.enableScrollWheelZoom(); // 允许滚轮缩放
+	map.addControl(new BMap.MapTypeControl({
+	mapTypes:[
+		BMAP_NORMAL_MAP,
+		BMAP_SATELLITE_MAP,
+		BMAP_HYBRID_MAP
+	]}));	  
+	var overlays = [];
+	map.centerAndZoom(poi, 16);
+	var tileLayer = new BMap.TileLayer({isTransparentPng: true});
+	tileLayer.getTilesUrl = function(tileCoord, zoom) {
+		var x = tileCoord.x;
+		var y = tileCoord.y;
+		return "http://lbsyun.baidu.com/jsdemo/img/border.png";
+		}
+	//热力图
+	heatmapOverlay = new BMapLib.HeatmapOverlay({"radius":20});
+	//绘制面积功能
+	function drawarea(){
+		// 百度地图API功能
+
+		map.enableScrollWheelZoom();  
+		
+		var overlaycomplete = function(e){
+			overlays.push(e.overlay);
+			console.log(e.drawingMode);
+			
+			
+			
+			if(e.drawingMode=="circle"){
+				console.log("area is 1212");
+				console.log("中心点坐标为",e.overlay.getCenter())
+				console.log("半径为",e.overlay.getRadius())
+				var center = e.overlay.getCenter();
+				var point = new BMap.Point(center.lng,center.lat);
+				console.log(center.lng,center.lat);
+				var marker = new BMap.Marker(point);  // 创建标注
+				map.addOverlay(marker);              // 将标注添加到地图中
+				//map.centerAndZoom(point, 15);
+				var opts = {
+				  width : 5,     // 信息窗口宽度
+				  height: 5,     // 信息窗口高度
+				  title : "" , // 信息窗口标题
+				  enableMessage:true,//设置允许信息窗发送短息
+				  message:"1212121"
+				}
+			
+				var infoWindow = new BMap.InfoWindow("面积大小12121212", opts);  // 创建信息窗口对象 
+				map.openInfoWindow(infoWindow,point); //开启信息窗口
+
+			}
+		};
+		var styleOptions = {
+			strokeColor:"red",    //边线颜色。
+			fillColor:"red",      //填充颜色。当参数为空时，圆形将没有填充效果。
+			strokeWeight: 3,       //边线的宽度，以像素为单位。
+			strokeOpacity: 0.8,	   //边线透明度，取值范围0 - 1。
+			fillOpacity: 0.6,      //填充的透明度，取值范围0 - 1。
+			strokeStyle: 'solid' //边线的样式，solid或dashed。
+		}
+		//实例化鼠标绘制工具
+		var drawingManager = new BMapLib.DrawingManager(map, {
+			isOpen: false, //是否开启绘制模式
+			enableDrawingTool: true, //是否显示工具栏
+			drawingToolOptions: {
+				anchor: BMAP_ANCHOR_TOP_LEFT, //位置
+				offset: new BMap.Size(5, 5), //偏离值
+			},
+			circleOptions: styleOptions, //圆的样式
+			polylineOptions: styleOptions, //线的样式
+			polygonOptions: styleOptions, //多边形的样式
+			rectangleOptions: styleOptions //矩形的样式
+		});  
+		 //添加鼠标绘制工具监听事件，用于获取绘制结果
+		drawingManager.addEventListener('overlaycomplete', overlaycomplete);
+	}
+	
+	//添加控件和比例尺
+	function add_control(){
+		var top_left_control = new BMap.ScaleControl({anchor: BMAP_ANCHOR_TOP_LEFT});// 左上角，添加比例尺
+		var top_left_navigation = new BMap.NavigationControl();  //左上角，添加默认缩放平移控件
+		//var top_right_navigation = new BMap.NavigationControl({anchor: BMAP_ANCHOR_TOP_RIGHT, type: BMAP_NAVIGATION_CONTROL_SMALL}); //右上角，仅包含平移和缩放按钮
+		/*缩放控件type有四种类型:
+		BMAP_NAVIGATION_CONTROL_SMALL：仅包含平移和缩放按钮；BMAP_NAVIGATION_CONTROL_PAN:仅包含平移按钮；BMAP_NAVIGATION_CONTROL_ZOOM：仅包含缩放按钮*/
+			map.addControl(top_left_control);        
+			map.addControl(top_left_navigation);     
+			map.addControl(top_right_navigation);    
+	}
+	//放大
+	function zoomIn(){
+		map.zoomIn();
+	
+	}
+	//缩小
+	function zoomOut(){
+		map.zoomOut();
+	
+	}
+	//测距
+	function getDistince(){
+		var myDis = new BMapLib.DistanceTool(map);
+		
+		myDis.open();  //开启鼠标测距
+		//myDis.close();  //关闭鼠标测距
+	}
+	
+	//清除所有覆盖物
+    function clearAll() {
+		for(var i = 0; i < overlays.length; i++){
+            map.removeOverlay(overlays[i]);
+        }
+        overlays.length = 0 
+		map.clearOverlays();
+    }
+	//开启网格
+	function openwangge(){
+
+		map.addTileLayer(tileLayer);
+	}
+	
+	//关闭网格
+	function closewangge(){
+		map.removeTileLayer(tileLayer);
+	}
+	
+	//开启热力图
+	function openhotmap(){
+		var point = new BMap.Point(116.418261, 39.921984);
+		map.centerAndZoom(point, 15);             // 初始化地图，设置中心点坐标和地图级别
+		
+		var points =[
+		{"lng":116.418261,"lat":39.921984,"count":50},
+		{"lng":116.423332,"lat":39.916532,"count":51},
+		{"lng":116.419787,"lat":39.930658,"count":15},
+		{"lng":116.418455,"lat":39.920921,"count":40},
+		{"lng":116.418843,"lat":39.915516,"count":100},
+		{"lng":116.42546,"lat":39.918503,"count":6},
+		{"lng":116.423289,"lat":39.919989,"count":18},
+		{"lng":116.418162,"lat":39.915051,"count":80},
+		{"lng":116.422039,"lat":39.91782,"count":11},
+		{"lng":116.41387,"lat":39.917253,"count":7},
+		{"lng":116.41773,"lat":39.919426,"count":42},
+		{"lng":116.421107,"lat":39.916445,"count":4},
+		{"lng":116.417521,"lat":39.917943,"count":27},
+		{"lng":116.419812,"lat":39.920836,"count":23},
+		{"lng":116.420682,"lat":39.91463,"count":60},
+		{"lng":116.415424,"lat":39.924675,"count":8},
+		{"lng":116.419242,"lat":39.914509,"count":15},
+		{"lng":116.422766,"lat":39.921408,"count":25},
+		{"lng":116.421674,"lat":39.924396,"count":21},
+		{"lng":116.427268,"lat":39.92267,"count":1},
+		{"lng":116.417721,"lat":39.920034,"count":51},
+		{"lng":116.412456,"lat":39.92667,"count":7},
+		{"lng":116.420432,"lat":39.919114,"count":11},
+		{"lng":116.425013,"lat":39.921611,"count":35},
+		{"lng":116.418733,"lat":39.931037,"count":22},
+		{"lng":116.419336,"lat":39.931134,"count":4},
+		{"lng":116.413557,"lat":39.923254,"count":5},
+		{"lng":116.418367,"lat":39.92943,"count":3},
+		{"lng":116.424312,"lat":39.919621,"count":100},
+		{"lng":116.423874,"lat":39.919447,"count":87},
+		{"lng":116.424225,"lat":39.923091,"count":32},
+		{"lng":116.417801,"lat":39.921854,"count":44},
+		{"lng":116.417129,"lat":39.928227,"count":21},
+		{"lng":116.426426,"lat":39.922286,"count":80},
+		{"lng":116.421597,"lat":39.91948,"count":32},
+		{"lng":116.423895,"lat":39.920787,"count":26},
+		{"lng":116.423563,"lat":39.921197,"count":17},
+		{"lng":116.417982,"lat":39.922547,"count":17},
+		{"lng":116.426126,"lat":39.921938,"count":25},
+		{"lng":116.42326,"lat":39.915782,"count":100},
+		{"lng":116.419239,"lat":39.916759,"count":39},
+		{"lng":116.417185,"lat":39.929123,"count":11},
+		{"lng":116.417237,"lat":39.927518,"count":9},
+		{"lng":116.417784,"lat":39.915754,"count":47},
+		{"lng":116.420193,"lat":39.917061,"count":52},
+		{"lng":116.422735,"lat":39.915619,"count":100},
+		{"lng":116.418495,"lat":39.915958,"count":46},
+		{"lng":116.416292,"lat":39.931166,"count":9},
+		{"lng":116.419916,"lat":39.924055,"count":8},
+		{"lng":116.42189,"lat":39.921308,"count":11},
+		{"lng":116.413765,"lat":39.929376,"count":3},
+		{"lng":116.418232,"lat":39.920348,"count":50},
+		{"lng":116.417554,"lat":39.930511,"count":15},
+		{"lng":116.418568,"lat":39.918161,"count":23},
+		{"lng":116.413461,"lat":39.926306,"count":3},
+		{"lng":116.42232,"lat":39.92161,"count":13},
+		{"lng":116.4174,"lat":39.928616,"count":6},
+		{"lng":116.424679,"lat":39.915499,"count":21},
+		{"lng":116.42171,"lat":39.915738,"count":29},
+		{"lng":116.417836,"lat":39.916998,"count":99},
+		{"lng":116.420755,"lat":39.928001,"count":10},
+		{"lng":116.414077,"lat":39.930655,"count":14},
+		{"lng":116.426092,"lat":39.922995,"count":16},
+		{"lng":116.41535,"lat":39.931054,"count":15},
+		{"lng":116.413022,"lat":39.921895,"count":13},
+		{"lng":116.415551,"lat":39.913373,"count":17},
+		{"lng":116.421191,"lat":39.926572,"count":1},
+		{"lng":116.419612,"lat":39.917119,"count":9},
+		{"lng":116.418237,"lat":39.921337,"count":54},
+		{"lng":116.423776,"lat":39.921919,"count":26},
+		{"lng":116.417694,"lat":39.92536,"count":17},
+		{"lng":116.415377,"lat":39.914137,"count":19},
+		{"lng":116.417434,"lat":39.914394,"count":43},
+		{"lng":116.42588,"lat":39.922622,"count":27},
+		{"lng":116.418345,"lat":39.919467,"count":8},
+		{"lng":116.426883,"lat":39.917171,"count":3},
+		{"lng":116.423877,"lat":39.916659,"count":34},
+		{"lng":116.415712,"lat":39.915613,"count":14},
+		{"lng":116.419869,"lat":39.931416,"count":12},
+		{"lng":116.416956,"lat":39.925377,"count":11},
+		{"lng":116.42066,"lat":39.925017,"count":38},
+		{"lng":116.416244,"lat":39.920215,"count":91},
+		{"lng":116.41929,"lat":39.915908,"count":54},
+		{"lng":116.422116,"lat":39.919658,"count":21},
+		{"lng":116.4183,"lat":39.925015,"count":15},
+		{"lng":116.421969,"lat":39.913527,"count":3},
+		{"lng":116.422936,"lat":39.921854,"count":24},
+		{"lng":116.41905,"lat":39.929217,"count":12},
+		{"lng":116.424579,"lat":39.914987,"count":57},
+		{"lng":116.42076,"lat":39.915251,"count":70},
+		{"lng":116.425867,"lat":39.918989,"count":8}];
+	   
+		if(!isSupportCanvas()){
+			alert('热力图目前只支持有canvas支持的浏览器,您所使用的浏览器不能使用热力图功能~')
+		}
+		//详细的参数,可以查看heatmap.js的文档 https://github.com/pa7/heatmap.js/blob/master/README.md
+		//参数说明如下:
+		/* visible 热力图是否显示,默认为true
+		 * opacity 热力的透明度,1-100
+		 * radius 势力图的每个点的半径大小   
+		 * gradient  {JSON} 热力图的渐变区间 . gradient如下所示
+		 *	{
+				.2:'rgb(0, 255, 255)',
+				.5:'rgb(0, 110, 255)',
+				.8:'rgb(100, 0, 255)'
+			}
+			其中 key 表示插值的位置, 0~1. 
+				value 为颜色值. 
+		 */
+		
+		map.addOverlay(heatmapOverlay);
+		heatmapOverlay.setDataSet({data:points,max:100});
+		heatmapOverlay.show();
+	}
+	//关闭热力图
+	function closehotmap(){
+		heatmapOverlay.hide();
+	}
+	function setGradient(){
+     	/*格式如下所示:
+		{
+	  		0:'rgb(102, 255, 0)',
+	 	 	.5:'rgb(255, 170, 0)',
+		  	1:'rgb(255, 0, 0)'
+		}*/
+     	var gradient = {};
+     	var colors = document.querySelectorAll("input[type='color']");
+     	colors = [].slice.call(colors,0);
+     	colors.forEach(function(ele){
+			gradient[ele.getAttribute("data-key")] = ele.value; 
+     	});
+        heatmapOverlay.setOptions({"gradient":gradient});
+    }
+	//判断浏览区是否支持canvas
+    function isSupportCanvas(){
+        var elem = document.createElement('canvas');
+        return !!(elem.getContext && elem.getContext('2d'));
+    }
+	//区域定位
+	function theLocation(){
+		var city = document.getElementById("cityName").value;
+		if(city != ""){
+			map.centerAndZoom(city,11);      // 用城市名设置地图中心点
+		}
+	}
+	
+	//区域轮廓
+	function getBoundary(){
+		clearAll();
+		var datas = new Array("晋城市-#ff0000","运城市-#ff5500","漳州市-#ffff00","赣州市-#00ff00","重庆市-#00ff55");
+		var bdary = new BMap.Boundary();
+		
+		for(var i=0;i<datas.length;i++){
+			bdary.get(datas[i].split("-")[0], function(rs){
+				console.log(rs);
+				
+				var bounds;
+				var maxNum = -1, maxPly;
+				
+				var count = rs.boundaries.length; 
+				for(var i = 0; i < count; i++){
+					var ply = new BMap.Polygon(rs.boundaries[i], {strokeWeight: 1, strokeOpacity:0.5,fillColor:datas[i].split("-")[1],strokeColor: "#000000"});
+					console.log(ply);
+					map.addOverlay(ply);  
+					var arrPts = ply.getPath();
+					if(arrPts.length > maxNum){
+						maxNum = arrPts.length;
+						maxPly = ply;
+					}
+				}
+				if(maxPly){
+					map.setViewport(maxPly.getPath());
+				}      
+			});
+		}
+
+	}
+</script>
+</body>
+</html>
+
+
+
+
+
